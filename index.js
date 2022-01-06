@@ -1,7 +1,10 @@
+require('dotenv').config()
 const express = require('express')
 const app = express()
 const morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./models/person')
+const { response } = require('express')
 morgan.token('content', (req, res) => { return JSON.stringify(req.body)})
 
 // Middlewares
@@ -10,7 +13,7 @@ app.use(morgan(":method :url :status :res[content-length] - :response-time ms :c
 app.use(cors())
 app.use(express.static('build'))
 
-let persons = [
+let people = [
     {
         id: 1,
         name: "Arto Hellas",
@@ -34,11 +37,13 @@ let persons = [
 ]
 
 app.get("/api/persons", (req, res) => {
-    res.json(persons)
+    Person.find({}).then(people => {
+        response.json(people)
+    })
 })
 
 app.get("/info", (req, res) => {
-    const amount = persons.length
+    const amount = people.length
     const time = new Date()
     const body = `<p>Phonebook has info for ${amount} people</p>
     <p>${time}</p>`
@@ -47,7 +52,7 @@ app.get("/info", (req, res) => {
 
 app.get("/api/persons/:id", (req, res) => {
     const id = Number(req.params.id)
-    const person = persons.find(person => person.id === id)
+    const person = people.find(person => person.id === id)
     if (person) {
         res.json(person)
     } else {
@@ -57,7 +62,7 @@ app.get("/api/persons/:id", (req, res) => {
 
 app.delete("/api/persons/:id", (req, res) => {
     const id = Number(req.params.id)
-    persons = persons.filter(person => person.id !== id)
+    people = people.filter(person => person.id !== id)
     res.status(204).end()
 })
 
@@ -82,12 +87,15 @@ app.post("/api/persons", (req, res) => {
             error: "name must be unique"
         })
     }
+    const person = new Person({
+        name: body.name,
+        number: body.number,
+    })
 
-    const id = parseInt(Math.random()*10000) 
-    const person = {id: id, ...req.body}
-    persons = persons.concat(person)
-    res.json(person)
+    person.save().then(savedPerson => {
+        res.json(savedPerson)
+    })
 })
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT)
